@@ -4,7 +4,8 @@
   "description": "A Telegram bot project for managing and searching documents using Google Drive integration.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/supervisor.js",
+    "bot": "node src/bot.js"
   },
   "keywords": [],
   "author": "",
