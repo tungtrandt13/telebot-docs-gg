@@ -1,6 +1,7 @@
 require('dotenv').config();
-const { Telegraf } = require('telegraf');
+const { Telegraf, session } = require('telegraf');
 const sheetsManager = require('./sheets');
+const topupCommand = require('./commands/topup');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -16,6 +17,9 @@ bot.use((ctx, next) => {
     return next();
 });
 
+// Session middleware is required for scenes to work
+bot.use(session());
+
 // Start command
 bot.command('start', (ctx) => {
     ctx.reply('Chào mừng bạn đến với Bot quản lý tài liệu! 📚\nSử dụng /help để xem danh sách lệnh.');
@@ -28,14 +32,17 @@ Các lệnh có sẵn:
 /start - Khởi động bot
 /myid - Hiển thị ID của bạn
 /view - Xem dữ liệu từ Google Sheets
+/topup - Tạo đơn topup mới cho khách hàng
 `;
     ctx.reply(helpMessage);
 });
 
-
 bot.command('myid', (ctx) => {
     ctx.reply(`Your Telegram ID is: ${ctx.from.id}`);
 });
+
+// Initialize topup command
+topupCommand.initTopupCommand(bot);
 
 // Add global error handlers
 process.on('uncaughtException', (error) => {
@@ -56,8 +63,6 @@ bot.launch()
     .catch((err) => {
         console.error('Bot launch failed:', err);
     });
-
-
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
