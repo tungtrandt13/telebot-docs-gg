@@ -7,23 +7,24 @@ const topupScene = new Scenes.WizardScene(
     // Step 1: Select customer
     async (ctx) => {
         try {
-            // Get the Alex sheet
             const allCustomer = await sheetsManager.getAllCustomers();
+            ctx.wizard.state.allCustomers = allCustomer;
             if (!allCustomer) {
                 ctx.reply('Sheet Customer not found');
                 return ctx.scene.leave();
             }
             
-            console.log(allCustomer)
             if (allCustomer.length === 0) {
                 ctx.reply('No customers found in the sheet');
                 return ctx.scene.leave();
             }
             
-            // const keyboard = allCustomer.map(cid => [cid]);
+            // Format keyboard properly - each button must be in its own array
+            const customerButtons = allCustomer.map(customer => [customer]);
+            customerButtons.push(['/cancel']); // Add cancel button as the last option
             
             await ctx.reply('Step 1: Please select a customer:', 
-                Markup.keyboard(allCustomer).oneTime().resize());
+                Markup.keyboard(customerButtons).oneTime().resize());
             
             return ctx.wizard.next();
         } catch (error) {
@@ -35,52 +36,126 @@ const topupScene = new Scenes.WizardScene(
     
     // Step 2: Enter topup amount
     async (ctx) => {
-        // Save the selected customer ID
+        if (ctx.message.text === '/cancel') {
+            await ctx.reply('Operation cancelled', Markup.removeKeyboard());
+            return ctx.scene.leave();
+        }
+        console.log(ctx.wizard.state.allCustomers)
+        if (!ctx.wizard.state.allCustomers.includes(ctx.message.text)) {
+            // Format keyboard properly for invalid selection
+            const customerButtons = ctx.wizard.state.allCustomers.map(customer => [customer]);
+            customerButtons.push(['/cancel']);
+            
+            await ctx.reply('Invalid customer selection. Please select a customer from the list:', 
+                Markup.keyboard(customerButtons).oneTime().resize());
+            return; // Stay on the same step
+        }
 
         ctx.wizard.state.customer = ctx.message.text;
         
-        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nStep 2: Please enter the topup amount:`);
+        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nStep 2: Please enter the topup amount:`, 
+            Markup.keyboard([['/cancel']]).oneTime().resize());
         return ctx.wizard.next();
     },
     
-    // Step 3: Enter account purchase amount
+    // Step 3: Enter add balance amount
     async (ctx) => {
+        if (ctx.message.text === '/cancel') {
+            await ctx.reply('Operation cancelled', Markup.removeKeyboard());
+            return ctx.scene.leave();
+        }
+
         const topupAmount = parseFloat(ctx.message.text);
         if (isNaN(topupAmount)) {
-            await ctx.reply('Please enter a valid number for the topup amount:');
+            await ctx.reply('Please enter a valid number for the topup amount:', 
+                Markup.keyboard([['/cancel']]).oneTime().resize());
             return;
         }
         
         ctx.wizard.state.topup = topupAmount;
-        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nTopup amount: ${topupAmount}\n\nStep 3: Please enter the account purchase amount:`);
+        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nTopup amount: ${topupAmount}\n\nStep 3: Please enter the add balance amount:`, 
+            Markup.keyboard([['/cancel']]).oneTime().resize());
         return ctx.wizard.next();
     },
     
-    // Step 4: Confirmation
+    // Step 4: Enter fee add balance
     async (ctx) => {
-        const accountAmount = parseFloat(ctx.message.text);
-        if (isNaN(accountAmount)) {
-            await ctx.reply('Please enter a valid number for the account purchase amount:');
+        if (ctx.message.text === '/cancel') {
+            await ctx.reply('Operation cancelled', Markup.removeKeyboard());
+            return ctx.scene.leave();
+        }
+
+        const addBalance = parseFloat(ctx.message.text);
+        if (isNaN(addBalance)) {
+            await ctx.reply('Please enter a valid number for the add balance amount:', 
+                Markup.keyboard([['/cancel']]).oneTime().resize());
             return;
         }
         
-        ctx.wizard.state.accountAmount = accountAmount;
+        ctx.wizard.state.addBalance = addBalance;
+        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nTopup amount: ${ctx.wizard.state.topup}\n\nAdd balance: ${addBalance}\n\nStep 4: Please enter the fee add balance:`, 
+            Markup.keyboard([['/cancel']]).oneTime().resize());
+        return ctx.wizard.next();
+    },
+    
+    // Step 5: Enter fee topup accounts
+    async (ctx) => {
+        if (ctx.message.text === '/cancel') {
+            await ctx.reply('Operation cancelled', Markup.removeKeyboard());
+            return ctx.scene.leave();
+        }
+
+        const feeAddBalance = parseFloat(ctx.message.text);
+        if (isNaN(feeAddBalance)) {
+            await ctx.reply('Please enter a valid number for the fee add balance:', 
+                Markup.keyboard([['/cancel']]).oneTime().resize());
+            return;
+        }
+        
+        ctx.wizard.state.feeAddBalance = feeAddBalance;
+        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nTopup amount: ${ctx.wizard.state.topup}\n\nAdd balance: ${ctx.wizard.state.addBalance}\n\nFee add balance: ${feeAddBalance}\n\nStep 5: Please enter the fee topup accounts:`, 
+            Markup.keyboard([['/cancel']]).oneTime().resize());
+        return ctx.wizard.next();
+    },
+    
+    // Step 6: Confirmation
+    async (ctx) => {
+        if (ctx.message.text === '/cancel') {
+            await ctx.reply('Operation cancelled', Markup.removeKeyboard());
+            return ctx.scene.leave();
+        }
+
+        const feeTopupAccounts = parseFloat(ctx.message.text);
+        if (isNaN(feeTopupAccounts)) {
+            await ctx.reply('Please enter a valid number for the fee topup accounts:', 
+                Markup.keyboard([['/cancel']]).oneTime().resize());
+            return;
+        }
+        
+        ctx.wizard.state.feeTopupAccounts = feeTopupAccounts;
         
         // Show confirmation
         const confirmMessage = `Please confirm your order:\n\n` +
             `Customer: ${ctx.wizard.state.customer}\n` +
             `Topup Amount: ${ctx.wizard.state.topup}\n` +
-            `Account Purchase: ${ctx.wizard.state.accountAmount}\n\n` +
+            `Add Balance: ${ctx.wizard.state.addBalance}\n` +
+            `Fee Add Balance: ${ctx.wizard.state.feeAddBalance}\n` +
+            `Fee Topup Accounts: ${ctx.wizard.state.feeTopupAccounts}\n\n` +
             `Type "confirm" to proceed or "cancel" to abort.`;
         
         await ctx.reply(confirmMessage, 
-            Markup.keyboard([['confirm'], ['cancel']]).oneTime().resize());
+            Markup.keyboard([['confirm'], ['cancel'], ['/cancel']]).oneTime().resize());
         
         return ctx.wizard.next();
     },
     
-    // Step 5: Process the confirmation
+    // Step 7: Process the confirmation
     async (ctx) => {
+        if (ctx.message.text === '/cancel') {
+            await ctx.reply('Operation cancelled', Markup.removeKeyboard());
+            return ctx.scene.leave();
+        }
+
         if (ctx.message.text.toLowerCase() === 'confirm') {
             try {
                 // Get the Alex sheet
@@ -112,16 +187,17 @@ const topupScene = new Scenes.WizardScene(
                 // Prepare row data
                 const today = new Date();
                 const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
-                const {topup, accountAmount} = ctx.wizard.state;
+                const {topup, addBalance, feeAddBalance, feeTopupAccounts} = ctx.wizard.state;
+                
                 // Add row to sheet
                 console.log(ctx.wizard.state);
                 await cutomerSheet.addRow({
                     'Date': formattedDate,
                     'Topup': topup,
-                    'Add blance': '',
-                    'Fee add balance': '',
-                    'Fee topup accounts': '',
-                    'Fee accounts used': accountAmount,
+                    'Add blance': addBalance,
+                    'Fee add balance': feeAddBalance,
+                    'Fee topup accounts': feeTopupAccounts,
+                    'Fee accounts used': '',
                     'Cid': '',
                     'Spent': ''
                 });
@@ -135,13 +211,20 @@ const topupScene = new Scenes.WizardScene(
         } else if (ctx.message.text.toLowerCase() === 'cancel') {
             await ctx.reply('Operation cancelled.', Markup.removeKeyboard());
         } else {
-            await ctx.reply('Please type "confirm" to proceed or "cancel" to abort.');
+            await ctx.reply('Please type "confirm" to proceed or "cancel" to abort.', 
+                Markup.keyboard([['confirm'], ['cancel'], ['/cancel']]).oneTime().resize());
             return;
         }
         
         return ctx.scene.leave();
     }
 );
+
+// Add middleware to handle /cancel command at any stage
+topupScene.command('cancel', (ctx) => {
+    ctx.reply('Operation cancelled', Markup.removeKeyboard());
+    return ctx.scene.leave();
+});
 
 // Initialize Google Sheets connection
 async function initializeSheets() {

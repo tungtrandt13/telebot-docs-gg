@@ -70,7 +70,7 @@ class SheetsManager {
             const allSheets = [];
             for (const sheetName in this.doc.sheetsByTitle) {
                 // Lưu chính xác tên sheet để có thể tìm kiếm sau này
-                allSheets.push([sheetName]);
+                allSheets.push(sheetName);
             }
             return allSheets;
         } catch (error) {
