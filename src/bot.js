@@ -30,10 +30,19 @@ bot.command('help', (ctx) => {
     const helpMessage = `
 Các lệnh có sẵn:
 /start - Khởi động bot
+/cancel - Hủy bỏ hoạt động hiện tại
 /myid - Hiển thị ID của bạn
 /topup - Tạo đơn topup mới cho khách hàng
 `;
     ctx.reply(helpMessage);
+});
+
+bot.command('cancel', (ctx) => {
+    ctx.reply('Hủy bỏ hoạt động hiện tại.');
+    // Check if scene exists before trying to leave it
+    if (ctx.scene && typeof ctx.scene.leave === 'function') {
+        ctx.scene.leave();
+    }
 });
 
 bot.command('myid', (ctx) => {
