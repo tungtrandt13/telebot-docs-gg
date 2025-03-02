@@ -64,6 +64,20 @@ class SheetsManager {
             return null;
         }
     }
+
+    async getAllCustomers() {
+        try {
+            const allSheets = [];
+            for (const sheetName in this.doc.sheetsByTitle) {
+                // Lưu chính xác tên sheet để có thể tìm kiếm sau này
+                allSheets.push([sheetName]);
+            }
+            return allSheets;
+        } catch (error) {
+            console.error('Error getting all customers:', error);
+            return [];
+        }
+    }
 }
 
 module.exports = new SheetsManager();

@@ -8,30 +8,22 @@ const topupScene = new Scenes.WizardScene(
     async (ctx) => {
         try {
             // Get the Alex sheet
-            const alexSheet = sheetsManager.doc.sheetsByTitle['Alex '];
-            if (!alexSheet) {
-                ctx.reply('Sheet "Alex" not found');
+            const allCustomer = await sheetsManager.getAllCustomers();
+            if (!allCustomer) {
+                ctx.reply('Sheet Customer not found');
                 return ctx.scene.leave();
             }
             
-            // Get all rows to extract unique customer IDs
-            const rows = await alexSheet.getRows();
-            
-            // Extract unique CIDs
-            const uniqueCids = [...new Set(rows
-                .filter(row => row['Cid']) // Filter out rows without CID
-                .map(row => row['Cid']))]; // Extract CID values
-            
-            if (uniqueCids.length === 0) {
+            console.log(allCustomer)
+            if (allCustomer.length === 0) {
                 ctx.reply('No customers found in the sheet');
                 return ctx.scene.leave();
             }
             
-            // Create keyboard with customer IDs
-            const keyboard = uniqueCids.map(cid => [cid]);
+            // const keyboard = allCustomer.map(cid => [cid]);
             
             await ctx.reply('Step 1: Please select a customer:', 
-                Markup.keyboard(keyboard).oneTime().resize());
+                Markup.keyboard(allCustomer).oneTime().resize());
             
             return ctx.wizard.next();
         } catch (error) {
@@ -44,9 +36,10 @@ const topupScene = new Scenes.WizardScene(
     // Step 2: Enter topup amount
     async (ctx) => {
         // Save the selected customer ID
-        ctx.wizard.state.cid = ctx.message.text;
+
+        ctx.wizard.state.customer = ctx.message.text;
         
-        await ctx.reply(`Selected customer: ${ctx.wizard.state.cid}\n\nStep 2: Please enter the topup amount:`);
+        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nStep 2: Please enter the topup amount:`);
         return ctx.wizard.next();
     },
     
@@ -59,7 +52,7 @@ const topupScene = new Scenes.WizardScene(
         }
         
         ctx.wizard.state.topup = topupAmount;
-        await ctx.reply(`Topup amount: ${topupAmount}\n\nStep 3: Please enter the account purchase amount:`);
+        await ctx.reply(`Selected customer: ${ctx.wizard.state.customer}\n\nTopup amount: ${topupAmount}\n\nStep 3: Please enter the account purchase amount:`);
         return ctx.wizard.next();
     },
     
@@ -75,7 +68,7 @@ const topupScene = new Scenes.WizardScene(
         
         // Show confirmation
         const confirmMessage = `Please confirm your order:\n\n` +
-            `Customer: ${ctx.wizard.state.cid}\n` +
+            `Customer: ${ctx.wizard.state.customer}\n` +
             `Topup Amount: ${ctx.wizard.state.topup}\n` +
             `Account Purchase: ${ctx.wizard.state.accountAmount}\n\n` +
             `Type "confirm" to proceed or "cancel" to abort.`;
@@ -91,21 +84,45 @@ const topupScene = new Scenes.WizardScene(
         if (ctx.message.text.toLowerCase() === 'confirm') {
             try {
                 // Get the Alex sheet
-                const alexSheet = sheetsManager.doc.sheetsByTitle['Alex '];
+                console.log(ctx.wizard.state.customer);
+                const cutomerSheet = sheetsManager.doc.sheetsByTitle[ctx.wizard.state.customer];
+                if (!cutomerSheet) {
+                    throw new Error('Sheet Customer not found');
+                }
+
+                await cutomerSheet.loadCells('A5:H5');
+        
+                // Extract values from row 5 cells
+                const headerValues = [];
+                for (let i = 0; i < 8; i++) { // Columns A through H
+                    const cellValue = cutomerSheet.getCell(4, i).value;
+                    if (cellValue) {
+                        headerValues.push(cellValue);
+                    }
+                }
                 
+                console.log('Extracted headers from row 5:', headerValues);
+                
+                // Set these values as the header row
+                await cutomerSheet.setHeaderRow(headerValues, 5);
+                
+                // Reload header row to confirm changes
+                await cutomerSheet.loadHeaderRow();
+
                 // Prepare row data
                 const today = new Date();
                 const formattedDate = `${today.getDate()}/${today.getMonth() + 1}`;
-                
+                const {topup, accountAmount} = ctx.wizard.state;
                 // Add row to sheet
-                await alexSheet.addRow({
+                console.log(ctx.wizard.state);
+                await cutomerSheet.addRow({
                     'Date': formattedDate,
-                    'Topup': ctx.wizard.state.topup,
+                    'Topup': topup,
                     'Add blance': '',
                     'Fee add balance': '',
                     'Fee topup accounts': '',
-                    'Fee accounts used': ctx.wizard.state.accountAmount,
-                    'Cid': ctx.wizard.state.cid,
+                    'Fee accounts used': accountAmount,
+                    'Cid': '',
                     'Spent': ''
                 });
                 

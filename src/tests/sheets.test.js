@@ -49,7 +49,16 @@ async function updateAlexSheet() {
         await alexSheet.loadHeaderRow(); 
         // 6. (Tùy chọn) Tải lại header row (để đảm bảo đồng bộ, nếu cần)
         // await sheet.loadHeaderRow();  // Thường không cần thiết trong trường hợp này
-    
+        await alexSheet.addRow({
+            'Date': new Date(),
+            'Topup': '1000',
+            'Add blance': '',
+            'Fee add balance': '',
+            'Fee topup accounts': '',
+            'Fee accounts used': '1000',
+            'Cid': '',
+            'Spent': ''
+        });
          console.log('Headers (from row 5):', alexSheet.headerValues);
 
     } catch (error) {

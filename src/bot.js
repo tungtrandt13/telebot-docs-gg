@@ -11,9 +11,9 @@ const authorizedUsers = (process.env.AUTHORIZED_USERS || '').split(',').map(id =
 // Middleware to check user authorization
 bot.use((ctx, next) => {
     const userId = ctx.from?.id.toString();
-    if (!authorizedUsers.includes(userId)) {
-        return ctx.reply('Sorry, you are not authorized to use this bot.');
-    }
+    // if (!authorizedUsers.includes(userId)) {
+    //     return ctx.reply('Sorry, you are not authorized to use this bot.');
+    // }
     return next();
 });
 
@@ -31,7 +31,6 @@ bot.command('help', (ctx) => {
 Các lệnh có sẵn:
 /start - Khởi động bot
 /myid - Hiển thị ID của bạn
-/view - Xem dữ liệu từ Google Sheets
 /topup - Tạo đơn topup mới cho khách hàng
 `;
     ctx.reply(helpMessage);
